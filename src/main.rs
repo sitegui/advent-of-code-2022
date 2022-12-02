@@ -1,8 +1,10 @@
+mod data;
+mod iter_utils;
+mod parser;
 
 use std::env::args;
 use std::fmt;
 use std::time::{Duration, Instant};
-
 
 const NUM_WARMING: usize = 2;
 const NUM_SAMPLES: usize = 5;
@@ -81,7 +83,7 @@ macro_rules! days {
 }
 
 days! {
-    day_1 = (0, 0),
+    day_1 = (68467, 203420),
 }
 
 fn main() {
