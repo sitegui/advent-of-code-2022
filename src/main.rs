@@ -84,6 +84,7 @@ macro_rules! days {
 
 days! {
     day_1 = (68467, 203420),
+    day_2 = (15422, 15442),
 }
 
 fn main() {
