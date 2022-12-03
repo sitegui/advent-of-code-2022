@@ -1,6 +1,5 @@
 use crate::data::Data;
 use itertools::Itertools;
-use std::mem;
 
 pub fn solve() -> (i64, i64) {
     Data::read(3)
@@ -22,9 +21,16 @@ pub fn solve() -> (i64, i64) {
 }
 
 fn find_same_item_2(items_a: &[u8], items_b: &[u8]) -> u8 {
+    let mut in_a = [false; 255];
+    let in_b = hash_items(items_b);
+
     for &item in items_a {
-        if items_b.contains(&item) {
-            return item;
+        if !in_a[item as usize] {
+            in_a[item as usize] = true;
+
+            if in_b[item as usize] {
+                return item;
+            }
         }
     }
 
@@ -32,13 +38,29 @@ fn find_same_item_2(items_a: &[u8], items_b: &[u8]) -> u8 {
 }
 
 fn find_same_item_3(items_a: &[u8], items_b: &[u8], items_c: &[u8]) -> u8 {
+    let mut in_a = [false; 255];
+    let in_b = hash_items(items_b);
+    let in_c = hash_items(items_c);
+
     for &item in items_a {
-        if items_b.contains(&item) && items_c.contains(&item) {
-            return item;
+        if !in_a[item as usize] {
+            in_a[item as usize] = true;
+
+            if in_b[item as usize] && in_c[item as usize] {
+                return item;
+            }
         }
     }
 
     unreachable!()
+}
+
+fn hash_items(items: &[u8]) -> [bool; 255] {
+    let mut hash = [false; 255];
+    for &item in items {
+        hash[item as usize] = true;
+    }
+    hash
 }
 
 fn priority(item: u8) -> i64 {
