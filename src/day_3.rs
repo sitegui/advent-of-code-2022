@@ -1,9 +1,8 @@
 use crate::data::Data;
 use itertools::Itertools;
 
-pub fn solve() -> (i64, i64) {
-    Data::read(3)
-        .lines()
+pub fn solve(data: &Data) -> (i64, i64) {
+    data.lines()
         .map(|line| {
             let (first_half, second_half) = line.split_at(line.len() / 2);
             let same = find_same_item_2(first_half, second_half);

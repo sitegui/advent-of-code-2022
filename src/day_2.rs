@@ -15,9 +15,8 @@ enum Outcome {
     Win,
 }
 
-pub fn solve() -> (i64, i64) {
-    Data::read(2)
-        .lines()
+pub fn solve(data: &Data) -> (i64, i64) {
+    data.lines()
         .map(|mut line| {
             let opponent_play = parse_opponent_play(line.consume_words(1));
             let second_column = line.consume_words(1);

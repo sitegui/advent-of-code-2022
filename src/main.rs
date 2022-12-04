@@ -2,6 +2,7 @@ mod data;
 mod iter_utils;
 mod parser;
 
+use crate::data::Data;
 use std::env::args;
 use std::fmt;
 use std::time::{Duration, Instant};
@@ -11,7 +12,7 @@ const NUM_SAMPLES: usize = 5;
 
 struct Day {
     label: &'static str,
-    solve_fn: fn() -> (i64, i64),
+    solve_fn: fn(&Data) -> (i64, i64),
     expected: (i64, i64),
 }
 
@@ -24,27 +25,27 @@ struct BenchResult {
 }
 
 impl Day {
-    fn solve(&self) -> (i64, i64) {
-        (self.solve_fn)()
+    fn solve(&self, data: &Data) -> (i64, i64) {
+        (self.solve_fn)(data)
     }
 
-    fn bench_solve(&self) -> BenchResult {
+    fn bench_solve(&self, data: &Data) -> BenchResult {
         for _ in 0..NUM_WARMING {
-            self.assert_solve();
+            self.assert_solve(data);
         }
 
         let mut samples = Vec::with_capacity(10);
         for _ in 0..NUM_SAMPLES {
             let start = Instant::now();
-            self.assert_solve();
+            self.assert_solve(data);
             samples.push(start.elapsed());
         }
 
         BenchResult::from_samples(self.label, samples)
     }
 
-    fn assert_solve(&self) {
-        let answer = self.solve();
+    fn assert_solve(&self, data: &Data) {
+        let answer = self.solve(data);
         assert_eq!(answer, self.expected, "when checking {}", self.label);
     }
 }
@@ -96,7 +97,8 @@ fn main() {
 
             let mut results = Vec::with_capacity(DAYS.len());
             for day in DAYS {
-                let result = day.bench_solve();
+                let data = Data::read(day.label).unwrap();
+                let result = day.bench_solve(&data);
                 println!("{}", result);
                 results.push(result);
             }
@@ -109,10 +111,22 @@ fn main() {
             println!("{}", overall);
         }
         Some(day) => {
-            let day: usize = day.parse().unwrap();
+            let day = &DAYS[day.parse::<usize>().unwrap() - 1];
 
+            if let Ok(data) = Data::read(&format!("example_{}", day.label)) {
+                let start = Instant::now();
+                let (part_1, part_2) = day.solve(&data);
+                println!(
+                    "Example answer ({}, {}) in {:?}",
+                    part_1,
+                    part_2,
+                    start.elapsed()
+                );
+            }
+
+            let data = Data::read(day.label).unwrap();
             let start = Instant::now();
-            let (part_1, part_2) = DAYS[day - 1].solve();
+            let (part_1, part_2) = day.solve(&data);
             println!("Answer ({}, {}) in {:?}", part_1, part_2, start.elapsed());
         }
     }

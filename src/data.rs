@@ -1,6 +1,6 @@
 use crate::parser::{Parser, Split, SplitBytes};
-use std::fs;
 use std::str::FromStr;
+use std::{fs, io};
 
 /// Represents the input data
 #[derive(Debug, Clone)]
@@ -9,17 +9,10 @@ pub struct Data {
 }
 
 impl Data {
-    pub fn read(day: usize) -> Self {
-        Data {
-            bytes: fs::read(format!("data/input-{}", day)).unwrap(),
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn read_example() -> Self {
-        Data {
-            bytes: fs::read("data/example").unwrap(),
-        }
+    pub fn read(label: &str) -> io::Result<Self> {
+        Ok(Data {
+            bytes: fs::read(format!("data/{}", label))?,
+        })
     }
 
     pub fn bytes(&self) -> &[u8] {

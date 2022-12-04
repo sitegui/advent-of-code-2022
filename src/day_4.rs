@@ -4,9 +4,8 @@ use crate::parser::Parser;
 use itertools::Itertools;
 use std::ops::RangeInclusive;
 
-pub fn solve() -> (i64, i64) {
-    Data::read(4)
-        .lines()
+pub fn solve(data: &Data) -> (i64, i64) {
+    data.lines()
         .map(|line| {
             let (elf_1, elf_2) = line
                 .split_byte(b',', true)

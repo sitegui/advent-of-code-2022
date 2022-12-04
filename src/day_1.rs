@@ -4,8 +4,8 @@ use crate::parser::Parser;
 use itertools::Itertools;
 use std::cmp::Reverse;
 
-pub fn solve() -> (i64, i64) {
-    let elves = Data::read(1)
+pub fn solve(data: &Data) -> (i64, i64) {
+    let elves = data
         .paragraphs()
         .map(|paragraph| paragraph.lines().parsed::<i64>().sum::<i64>())
         .sorted_by_key(|&i| Reverse(i))
