@@ -86,6 +86,7 @@ days! {
     day_1 = (68467, 203420),
     day_2 = (15422, 15442),
     day_3 = (7568, 2780),
+    day_4 = (542, 900),
 }
 
 fn main() {
@@ -112,12 +113,7 @@ fn main() {
 
             let start = Instant::now();
             let (part_1, part_2) = DAYS[day - 1].solve();
-            println!(
-                "Part 1 = {}, part 2 = {} in {:?}",
-                part_1,
-                part_2,
-                start.elapsed()
-            );
+            println!("Answer ({}, {}) in {:?}", part_1, part_2, start.elapsed());
         }
     }
 }

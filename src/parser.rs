@@ -29,6 +29,7 @@ pub trait Parser<'a> {
     fn split_bytes(self, separator: &'a [u8], ignore_last_empty: bool) -> SplitBytes<'a>;
     fn lines(self) -> Split<'a>;
     fn paragraphs(self) -> SplitBytes<'a>;
+    fn words(self) -> SplitBytes<'a>;
 }
 
 impl<'a> Parser<'a> for &'a [u8] {
@@ -125,6 +126,10 @@ impl<'a> Parser<'a> for &'a [u8] {
 
     fn paragraphs(self) -> SplitBytes<'a> {
         self.split_bytes(b"\n\n", true)
+    }
+
+    fn words(self) -> SplitBytes<'a> {
+        self.split_bytes(b" ", true)
     }
 }
 
