@@ -10,10 +10,16 @@ use std::time::{Duration, Instant};
 const NUM_WARMING: usize = 2;
 const NUM_SAMPLES: usize = 5;
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum DayOutput {
+    Int(i64, i64),
+    Str(String, String),
+}
+
 struct Day {
     label: &'static str,
-    solve_fn: fn(&Data) -> (i64, i64),
-    expected: (i64, i64),
+    solve_fn: fn(&Data) -> DayOutput,
+    expected: DayOutput,
 }
 
 #[derive(Clone)]
@@ -25,7 +31,7 @@ struct BenchResult {
 }
 
 impl Day {
-    fn solve(&self, data: &Data) -> (i64, i64) {
+    fn solve(&self, data: &Data) -> DayOutput {
         (self.solve_fn)(data)
     }
 
@@ -70,16 +76,18 @@ impl BenchResult {
 }
 
 macro_rules! days {
-    ($($day:ident = ($part_1:expr, $part_2:expr)),* $(,)?) => {
+    ($($day:ident = $expected:expr),* $(,)?) => {
         $(mod $day;)*
 
-        const DAYS: &[Day] = &[
-            $(Day {
-                label: stringify!($day),
-                solve_fn: $day::solve,
-                expected: ($part_1, $part_2)
-            }),*
-        ];
+        fn days() -> Vec<Day> {
+            vec![
+                $(Day {
+                    label: stringify!($day),
+                    solve_fn: $day::solve,
+                    expected: $expected.into(),
+                }),*
+            ]
+        }
     };
 }
 
@@ -88,15 +96,18 @@ days! {
     day_2 = (15422, 15442),
     day_3 = (7568, 2780),
     day_4 = (542, 900),
+    day_5 = ("", ""),
 }
 
 fn main() {
+    let days = days();
+
     match args().nth(1) {
         None => {
             println!("Will execute all days to time their individual and total execution times");
 
-            let mut results = Vec::with_capacity(DAYS.len());
-            for day in DAYS {
+            let mut results = Vec::with_capacity(days.len());
+            for day in &days {
                 let data = Data::read(day.label).unwrap();
                 let result = day.bench_solve(&data);
                 println!("{}", result);
@@ -107,27 +118,22 @@ fn main() {
                 .map(|i| results.iter().map(|result| result.samples[i]).sum())
                 .collect();
 
-            let overall = BenchResult::from_samples(format!("{} days", DAYS.len()), combined);
+            let overall = BenchResult::from_samples(format!("{} days", days.len()), combined);
             println!("{}", overall);
         }
         Some(day) => {
-            let day = &DAYS[day.parse::<usize>().unwrap() - 1];
+            let day = &days[day.parse::<usize>().unwrap() - 1];
 
             if let Ok(data) = Data::read(&format!("example_{}", day.label)) {
                 let start = Instant::now();
-                let (part_1, part_2) = day.solve(&data);
-                println!(
-                    "Example answer ({}, {}) in {:?}",
-                    part_1,
-                    part_2,
-                    start.elapsed()
-                );
+                let answer = day.solve(&data);
+                println!("Example answer {:?} in {:?}", answer, start.elapsed());
             }
 
             let data = Data::read(day.label).unwrap();
             let start = Instant::now();
-            let (part_1, part_2) = day.solve(&data);
-            println!("Answer ({}, {}) in {:?}", part_1, part_2, start.elapsed());
+            let answer = day.solve(&data);
+            println!("Answer {:?} in {:?}", answer, start.elapsed());
         }
     }
 }
@@ -141,5 +147,23 @@ impl fmt::Display for BenchResult {
             self.mean.as_secs_f64() * 1e3,
             self.std.as_secs_f64() * 1e3
         )
+    }
+}
+
+impl From<(i64, i64)> for DayOutput {
+    fn from(value: (i64, i64)) -> Self {
+        DayOutput::Int(value.0, value.1)
+    }
+}
+
+impl From<(&str, &str)> for DayOutput {
+    fn from(value: (&str, &str)) -> Self {
+        DayOutput::Str(value.0.to_string(), value.1.to_string())
+    }
+}
+
+impl From<(String, String)> for DayOutput {
+    fn from(value: (String, String)) -> Self {
+        DayOutput::Str(value.0, value.1)
     }
 }

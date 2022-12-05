@@ -27,9 +27,9 @@ pub trait Parser<'a> {
     fn try_consume_prefix(&mut self, prefix: &[u8]) -> Option<()>;
     fn split_byte(self, separator: u8, ignore_last_empty: bool) -> Split<'a>;
     fn split_bytes(self, separator: &'a [u8], ignore_last_empty: bool) -> SplitBytes<'a>;
+    fn words(self) -> Split<'a>;
     fn lines(self) -> Split<'a>;
     fn paragraphs(self) -> SplitBytes<'a>;
-    fn words(self) -> SplitBytes<'a>;
 }
 
 impl<'a> Parser<'a> for &'a [u8] {
@@ -120,16 +120,16 @@ impl<'a> Parser<'a> for &'a [u8] {
         }
     }
 
+    fn words(self) -> Split<'a> {
+        self.split_byte(b' ', true)
+    }
+
     fn lines(self) -> Split<'a> {
         self.split_byte(b'\n', true)
     }
 
     fn paragraphs(self) -> SplitBytes<'a> {
         self.split_bytes(b"\n\n", true)
-    }
-
-    fn words(self) -> SplitBytes<'a> {
-        self.split_bytes(b" ", true)
     }
 }
 

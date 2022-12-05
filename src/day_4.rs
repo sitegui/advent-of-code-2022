@@ -1,10 +1,11 @@
 use crate::data::Data;
 use crate::iter_utils::IterUtils;
 use crate::parser::Parser;
+use crate::DayOutput;
 use itertools::Itertools;
 use std::ops::RangeInclusive;
 
-pub fn solve(data: &Data) -> (i64, i64) {
+pub fn solve(data: &Data) -> DayOutput {
     data.lines()
         .map(|line| {
             let (elf_1, elf_2) = line
@@ -19,6 +20,7 @@ pub fn solve(data: &Data) -> (i64, i64) {
             (part_1 as i64, part_2 as i64)
         })
         .fold((0, 0), |acc, round| (acc.0 + round.0, acc.1 + round.1))
+        .into()
 }
 
 fn parse_range(bytes: &[u8]) -> RangeInclusive<i32> {

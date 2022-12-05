@@ -1,5 +1,6 @@
 use crate::data::Data;
 use crate::parser::Parser;
+use crate::DayOutput;
 
 #[derive(Debug, Clone, Copy)]
 enum Play {
@@ -15,7 +16,7 @@ enum Outcome {
     Win,
 }
 
-pub fn solve(data: &Data) -> (i64, i64) {
+pub fn solve(data: &Data) -> DayOutput {
     data.lines()
         .map(|mut line| {
             let opponent_play = parse_opponent_play(line.consume_words(1));
@@ -32,6 +33,7 @@ pub fn solve(data: &Data) -> (i64, i64) {
             (score_p1, score_p2)
         })
         .fold((0, 0), |acc, round| (acc.0 + round.0, acc.1 + round.1))
+        .into()
 }
 
 fn parse_opponent_play(bytes: &[u8]) -> Play {

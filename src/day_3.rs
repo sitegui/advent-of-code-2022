@@ -1,7 +1,8 @@
 use crate::data::Data;
+use crate::DayOutput;
 use itertools::Itertools;
 
-pub fn solve(data: &Data) -> (i64, i64) {
+pub fn solve(data: &Data) -> DayOutput {
     data.lines()
         .map(|line| {
             let (first_half, second_half) = line.split_at(line.len() / 2);
@@ -17,6 +18,7 @@ pub fn solve(data: &Data) -> (i64, i64) {
             (elf_1.1 + elf_2.1 + elf_3.1, priority(badge))
         })
         .fold((0, 0), |acc, round| (acc.0 + round.0, acc.1 + round.1))
+        .into()
 }
 
 fn find_same_item_2(items_a: &[u8], items_b: &[u8]) -> u8 {
