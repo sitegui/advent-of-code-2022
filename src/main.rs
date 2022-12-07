@@ -7,8 +7,8 @@ use std::env::args;
 use std::fmt;
 use std::time::{Duration, Instant};
 
-const NUM_WARMING: usize = 2;
-const NUM_SAMPLES: usize = 5;
+const NUM_WARMING: usize = 5;
+const NUM_SAMPLES: usize = 15;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum DayOutput {
@@ -98,6 +98,7 @@ days! {
     day_4 = (542, 900),
     day_5 = ("JDTMRWCQJ", "VHJDDCWRD"),
     day_6 = (1134, 2263),
+    day_7 = (1723892, 8474158),
 }
 
 fn main() {
