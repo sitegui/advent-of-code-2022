@@ -23,6 +23,8 @@ pub trait Parser<'a> {
     fn try_consume_until_bytes(&mut self, target_bytes: &[u8]) -> Option<&'a [u8]>;
     fn consume_words(&mut self, n: usize) -> &'a [u8];
     fn try_consume_words(&mut self, n: usize) -> Option<&'a [u8]>;
+    fn consume_word(&mut self) -> &'a [u8];
+    fn try_consume_word(&mut self) -> Option<&'a [u8]>;
     fn consume_prefix(&mut self, prefix: &[u8]);
     fn try_consume_prefix(&mut self, prefix: &[u8]) -> Option<()>;
     fn split_byte(self, separator: u8, ignore_last_empty: bool) -> Split<'a>;
@@ -89,6 +91,14 @@ impl<'a> Parser<'a> for &'a [u8] {
         } else {
             None
         }
+    }
+
+    fn consume_word(&mut self) -> &'a [u8] {
+        self.try_consume_word().unwrap()
+    }
+
+    fn try_consume_word(&mut self) -> Option<&'a [u8]> {
+        self.try_consume_until(b' ')
     }
 
     fn consume_prefix(&mut self, prefix: &[u8]) {
