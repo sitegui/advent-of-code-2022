@@ -99,6 +99,7 @@ days! {
     day_5 = ("JDTMRWCQJ", "VHJDDCWRD"),
     day_6 = (1134, 2263),
     day_7 = (1723892, 8474158),
+    day_8 = (1679, 536625),
 }
 
 fn main() {
