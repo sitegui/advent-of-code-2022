@@ -13,6 +13,7 @@ const NUM_SAMPLES: usize = 15;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum DayOutput {
     Int(i64, i64),
+    IntStr(i64, String),
     Str(String, String),
 }
 
@@ -101,6 +102,7 @@ days! {
     day_7 = (1723892, 8474158),
     day_8 = (1679, 536625),
     day_9 = (6745, 2793),
+    day_10 = (15680, "ZFBFHGUP"),
 }
 
 fn main() {
@@ -160,6 +162,12 @@ impl From<(i64, i64)> for DayOutput {
     }
 }
 
+impl From<(i64, &str)> for DayOutput {
+    fn from(value: (i64, &str)) -> Self {
+        DayOutput::IntStr(value.0, value.1.to_string())
+    }
+}
+
 impl From<(&str, &str)> for DayOutput {
     fn from(value: (&str, &str)) -> Self {
         DayOutput::Str(value.0.to_string(), value.1.to_string())
@@ -169,5 +177,11 @@ impl From<(&str, &str)> for DayOutput {
 impl From<(String, String)> for DayOutput {
     fn from(value: (String, String)) -> Self {
         DayOutput::Str(value.0, value.1)
+    }
+}
+
+impl From<(i64, String)> for DayOutput {
+    fn from(value: (i64, String)) -> Self {
+        DayOutput::IntStr(value.0, value.1)
     }
 }
