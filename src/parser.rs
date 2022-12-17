@@ -16,22 +16,24 @@ pub struct SplitBytes<'a> {
 
 pub trait Parser<'a> {
     fn consume_byte(&mut self) -> u8;
-    fn try_consume_byte(&mut self) -> Option<u8>;
     fn consume_bytes(&mut self, n: usize) -> &'a [u8];
-    fn consume_until(&mut self, target_byte: u8) -> &'a [u8];
-    fn try_consume_until(&mut self, target_byte: u8) -> Option<&'a [u8]>;
-    fn try_consume_until_bytes(&mut self, target_bytes: &[u8]) -> Option<&'a [u8]>;
-    fn consume_words(&mut self, n: usize) -> &'a [u8];
-    fn try_consume_words(&mut self, n: usize) -> Option<&'a [u8]>;
-    fn consume_word(&mut self) -> &'a [u8];
-    fn try_consume_word(&mut self) -> Option<&'a [u8]>;
+    fn consume_line(&mut self) -> &'a [u8];
     fn consume_prefix(&mut self, prefix: &[u8]);
-    fn try_consume_prefix(&mut self, prefix: &[u8]) -> Option<()>;
-    fn split_byte(self, separator: u8, ignore_last_empty: bool) -> Split<'a>;
-    fn split_bytes(self, separator: &'a [u8], ignore_last_empty: bool) -> SplitBytes<'a>;
-    fn words(self) -> Split<'a>;
+    fn consume_until(&mut self, target_byte: u8) -> &'a [u8];
+    fn consume_word(&mut self) -> &'a [u8];
+    fn consume_words(&mut self, n: usize) -> &'a [u8];
     fn lines(self) -> Split<'a>;
     fn paragraphs(self) -> SplitBytes<'a>;
+    fn split_byte(self, separator: u8, ignore_last_empty: bool) -> Split<'a>;
+    fn split_bytes(self, separator: &'a [u8], ignore_last_empty: bool) -> SplitBytes<'a>;
+    fn try_consume_byte(&mut self) -> Option<u8>;
+    fn try_consume_line(&mut self) -> Option<&'a [u8]>;
+    fn try_consume_prefix(&mut self, prefix: &[u8]) -> Option<()>;
+    fn try_consume_until(&mut self, target_byte: u8) -> Option<&'a [u8]>;
+    fn try_consume_until_bytes(&mut self, target_bytes: &[u8]) -> Option<&'a [u8]>;
+    fn try_consume_word(&mut self) -> Option<&'a [u8]>;
+    fn try_consume_words(&mut self, n: usize) -> Option<&'a [u8]>;
+    fn words(self) -> Split<'a>;
 }
 
 impl<'a> Parser<'a> for &'a [u8] {
@@ -41,6 +43,56 @@ impl<'a> Parser<'a> for &'a [u8] {
         result
     }
 
+    fn consume_bytes(&mut self, n: usize) -> &'a [u8] {
+        let result = &self[..n];
+        *self = &self[n..];
+        result
+    }
+
+    fn consume_line(&mut self) -> &'a [u8] {
+        self.try_consume_line().unwrap()
+    }
+
+    fn consume_prefix(&mut self, prefix: &[u8]) {
+        self.try_consume_prefix(prefix).unwrap()
+    }
+
+    fn consume_until(&mut self, target_byte: u8) -> &'a [u8] {
+        self.try_consume_until(target_byte).unwrap()
+    }
+
+    fn consume_word(&mut self) -> &'a [u8] {
+        self.try_consume_word().unwrap()
+    }
+
+    fn consume_words(&mut self, n: usize) -> &'a [u8] {
+        self.try_consume_words(n).unwrap()
+    }
+
+    fn lines(self) -> Split<'a> {
+        self.split_byte(b'\n', true)
+    }
+
+    fn paragraphs(self) -> SplitBytes<'a> {
+        self.split_bytes(b"\n\n", true)
+    }
+
+    fn split_byte(self, separator: u8, ignore_last_empty: bool) -> Split<'a> {
+        Split {
+            parser: self,
+            separator,
+            ignore_last_empty,
+        }
+    }
+
+    fn split_bytes(self, separator: &'a [u8], ignore_last_empty: bool) -> SplitBytes<'a> {
+        SplitBytes {
+            parser: self,
+            separator,
+            ignore_last_empty,
+        }
+    }
+
     fn try_consume_byte(&mut self) -> Option<u8> {
         self.first().map(|&result| {
             *self = &self[1..];
@@ -48,14 +100,17 @@ impl<'a> Parser<'a> for &'a [u8] {
         })
     }
 
-    fn consume_bytes(&mut self, n: usize) -> &'a [u8] {
-        let result = &self[..n];
-        *self = &self[n..];
-        result
+    fn try_consume_line(&mut self) -> Option<&'a [u8]> {
+        self.try_consume_until(b'\n')
     }
 
-    fn consume_until(&mut self, target_byte: u8) -> &'a [u8] {
-        self.try_consume_until(target_byte).unwrap()
+    fn try_consume_prefix(&mut self, prefix: &[u8]) -> Option<()> {
+        if self.starts_with(prefix) {
+            self.consume_bytes(prefix.len());
+            Some(())
+        } else {
+            None
+        }
     }
 
     fn try_consume_until(&mut self, target_byte: u8) -> Option<&'a [u8]> {
@@ -70,8 +125,8 @@ impl<'a> Parser<'a> for &'a [u8] {
             .map(|pos| self.consume_bytes(pos + target_bytes.len())[..pos].into())
     }
 
-    fn consume_words(&mut self, n: usize) -> &'a [u8] {
-        self.try_consume_words(n).unwrap()
+    fn try_consume_word(&mut self) -> Option<&'a [u8]> {
+        self.try_consume_until(b' ')
     }
 
     fn try_consume_words(&mut self, mut n: usize) -> Option<&'a [u8]> {
@@ -93,53 +148,8 @@ impl<'a> Parser<'a> for &'a [u8] {
         }
     }
 
-    fn consume_word(&mut self) -> &'a [u8] {
-        self.try_consume_word().unwrap()
-    }
-
-    fn try_consume_word(&mut self) -> Option<&'a [u8]> {
-        self.try_consume_until(b' ')
-    }
-
-    fn consume_prefix(&mut self, prefix: &[u8]) {
-        self.try_consume_prefix(prefix).unwrap()
-    }
-
-    fn try_consume_prefix(&mut self, prefix: &[u8]) -> Option<()> {
-        if self.starts_with(prefix) {
-            self.consume_bytes(prefix.len());
-            Some(())
-        } else {
-            None
-        }
-    }
-
-    fn split_byte(self, separator: u8, ignore_last_empty: bool) -> Split<'a> {
-        Split {
-            parser: self,
-            separator,
-            ignore_last_empty,
-        }
-    }
-
-    fn split_bytes(self, separator: &'a [u8], ignore_last_empty: bool) -> SplitBytes<'a> {
-        SplitBytes {
-            parser: self,
-            separator,
-            ignore_last_empty,
-        }
-    }
-
     fn words(self) -> Split<'a> {
         self.split_byte(b' ', true)
-    }
-
-    fn lines(self) -> Split<'a> {
-        self.split_byte(b'\n', true)
-    }
-
-    fn paragraphs(self) -> SplitBytes<'a> {
-        self.split_bytes(b"\n\n", true)
     }
 }
 
