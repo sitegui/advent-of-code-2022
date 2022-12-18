@@ -1,6 +1,5 @@
-use nom::error::{Error, ParseError};
+use nom::error::Error;
 use nom::{Finish, IResult, Parser};
-use std::fmt::Debug;
 
 // Re-export useful parsers
 pub use nom::branch::*;
