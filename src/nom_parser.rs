@@ -13,8 +13,11 @@ pub use nom::sequence::*;
 pub type PResult<'a, O> = IResult<&'a [u8], O>;
 
 pub trait PParser<'a, O>: Parser<&'a [u8], O, Error<&'a [u8]>> + Sized {
-    fn try_consume_all(self, input: &'a [u8]) -> Result<O, Error<&'a [u8]>> {
-        all_consuming(self)(input).finish().map(|(_, o)| o)
+    fn try_consume_all(self, input: &'a [u8]) -> Result<O, Error<String>> {
+        all_consuming(self)(input)
+            .finish()
+            .map(|(_, o)| o)
+            .map_err(|err| Error::new(String::from_utf8_lossy(err.input).into_owned(), err.code))
     }
 
     fn consume_all(self, input: &'a [u8]) -> O {

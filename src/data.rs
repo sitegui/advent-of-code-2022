@@ -66,6 +66,7 @@ mod tests {
     #[test]
     fn paragraphs() {
         let data = Data {
+            is_example: false,
             bytes: "abc\n\na\nb\nc\n\nab\nac\n\nb\n".to_owned().into_bytes(),
         };
 
