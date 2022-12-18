@@ -1,6 +1,8 @@
 mod data;
 mod iter_utils;
+mod nom_parser;
 mod parser;
+mod xy;
 
 use crate::data::Data;
 use std::env::args;
@@ -107,6 +109,7 @@ days! {
     day_12 = (408, 399),
     day_13 = (5882, 24948),
     day_14 = (1513, 22646),
+    day_15 = (5112034, 0),
 }
 
 fn main() {
@@ -118,7 +121,7 @@ fn main() {
 
             let mut results = Vec::with_capacity(days.len());
             for day in &days {
-                let data = Data::read(day.label).unwrap();
+                let data = Data::read(day.label, false).unwrap();
                 let result = day.bench_solve(&data);
                 println!("{}", result);
                 results.push(result);
@@ -134,13 +137,13 @@ fn main() {
         Some(day) => {
             let day = &days[day.parse::<usize>().unwrap() - 1];
 
-            if let Ok(data) = Data::read(&format!("example_{}", day.label)) {
+            if let Ok(data) = Data::read(&format!("example_{}", day.label), true) {
                 let start = Instant::now();
                 let answer = day.solve(&data);
                 println!("Example answer {:?} in {:?}", answer, start.elapsed());
             }
 
-            let data = Data::read(day.label).unwrap();
+            let data = Data::read(day.label, false).unwrap();
             let start = Instant::now();
             let answer = day.solve(&data);
             println!("Answer {:?} in {:?}", answer, start.elapsed());

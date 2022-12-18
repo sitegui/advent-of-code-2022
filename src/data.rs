@@ -5,13 +5,15 @@ use std::{fs, io};
 /// Represents the input data
 #[derive(Debug, Clone)]
 pub struct Data {
+    is_example: bool,
     bytes: Vec<u8>,
 }
 
 impl Data {
-    pub fn read(label: &str) -> io::Result<Self> {
+    pub fn read(label: &str, is_example: bool) -> io::Result<Self> {
         Ok(Data {
             bytes: fs::read(format!("data/{}", label))?,
+            is_example,
         })
     }
 
@@ -25,6 +27,10 @@ impl Data {
 
     pub fn paragraphs(&self) -> SplitBytes<'_> {
         self.bytes().paragraphs()
+    }
+
+    pub fn is_example(&self) -> bool {
+        self.is_example
     }
 }
 

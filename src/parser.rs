@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use std::fmt::Debug;
+
 #[derive(Debug, Clone, Copy)]
 pub struct Split<'a> {
     parser: &'a [u8],

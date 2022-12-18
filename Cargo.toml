@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 itertools = "0.10.5"
 nom = "7.1.1"
+num-traits = "0.2.15"
 pathfinding = "4.1.1"
