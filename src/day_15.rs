@@ -112,7 +112,7 @@ fn parse_sensor(input: &[u8]) -> PResult<Sensor> {
 
 fn parse_xy(input: &[u8]) -> PResult<XY> {
     map(
-        tuple((tag(b"x="), i32, tag(b", y="), i32)),
+        tuple((tag(b"x="), nom_i32, tag(b", y="), nom_i32)),
         |(_, x, _, y)| XY::new(x, y),
     )(input)
 }

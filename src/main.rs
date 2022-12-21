@@ -110,7 +110,7 @@ days! {
     day_13 = (5882, 24948),
     day_14 = (1513, 22646),
     day_15 = (5112034, 13172087230812),
-    day_16 = (2059, 0),
+    day_16 = (2059, 2790),
 }
 
 fn main() {
@@ -121,7 +121,7 @@ fn main() {
             println!("Will execute all days to time their individual and total execution times");
 
             let mut results = Vec::with_capacity(days.len());
-            for day in &days {
+            for day in days.iter().rev() {
                 let data = Data::read(day.label, false).unwrap();
                 let result = day.bench_solve(&data);
                 println!("{}", result);
