@@ -4,7 +4,7 @@ use nom::{Finish, IResult, Parser};
 // Re-export useful parsers
 pub use nom::branch::*;
 pub use nom::bytes::complete::*;
-pub use nom::character::complete::{i32 as nom_i32, newline};
+pub use nom::character::complete::{i32 as nom_i32, line_ending, one_of};
 pub use nom::character::*;
 pub use nom::combinator::*;
 pub use nom::multi::*;
@@ -26,7 +26,7 @@ pub trait PParser<'a, O>: Parser<&'a [u8], O, Error<&'a [u8]>> + Sized {
 }
 
 pub fn lines<'a, P: PParser<'a, O>, O>(parser: P) -> impl PParser<'a, Vec<O>> {
-    many0(terminated(parser, newline))
+    many0(terminated(parser, line_ending))
 }
 
 impl<'a, O, T> PParser<'a, O> for T where T: Parser<&'a [u8], O, Error<&'a [u8]>> {}
