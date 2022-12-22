@@ -2,7 +2,9 @@ use crate::data::Data;
 use crate::nom_parser::*;
 use crate::xy::XY;
 use crate::DayOutput;
-use ndarray::{s, Array2, Ix2, SliceArg, Zip};
+use itertools::Itertools;
+use ndarray::{s, Array2, Axis, Ix2, SliceArg, Zip};
+use std::fmt::{Display, Formatter, Write};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 enum Tile {
@@ -78,6 +80,8 @@ pub fn solve(data: &Data) -> DayOutput {
     }
 
     let part_1 = MAX_HEIGHT - chamber.highest_rock;
+
+    println!("{}", chamber);
 
     (part_1 as i64, 0).into()
 }
@@ -172,5 +176,26 @@ impl Chamber {
             x_min as usize..x_max as usize,
             y_min as usize..y_max as usize
         ])
+    }
+}
+
+impl Display for Chamber {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.tiles.axis_iter(Axis(1)).format_with("\n", |row, f| {
+                f(&format_args!("|{}|", row.iter().format("")))
+            })
+        )
+    }
+}
+
+impl Display for Tile {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_char(match self {
+            Tile::Air => '.',
+            Tile::Rock => '#',
+        })
     }
 }
