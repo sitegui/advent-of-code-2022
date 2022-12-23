@@ -82,6 +82,7 @@ fn count_pairs(droplet: &Array3<UnitCube>, count: impl Fn(UnitCube, UnitCube) ->
 fn flood_fill_steam(droplet: &mut Array3<UnitCube>, start: [usize; 3]) {
     let queue = &mut VecDeque::new();
     let droplet_shape = droplet.raw_dim();
+    assert_eq!(droplet[start], UnitCube::Air);
 
     let mut visit = |queue: &mut VecDeque<[usize; 3]>, pos: [usize; 3]| {
         if droplet[pos] == UnitCube::Air {
