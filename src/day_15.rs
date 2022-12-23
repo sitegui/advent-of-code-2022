@@ -1,14 +1,14 @@
 use crate::data::Data;
 use crate::nom_parser::*;
-use crate::xy::XY;
+use crate::xy::Xy;
 use crate::DayOutput;
 use itertools::Itertools;
 use std::cmp::Reverse;
 
 #[derive(Debug)]
 struct Sensor {
-    xy: XY,
-    beacon: XY,
+    xy: Xy,
+    beacon: Xy,
     radius: i32,
 }
 
@@ -110,10 +110,10 @@ fn parse_sensor(input: &[u8]) -> PResult<Sensor> {
     )(input)
 }
 
-fn parse_xy(input: &[u8]) -> PResult<XY> {
+fn parse_xy(input: &[u8]) -> PResult<Xy> {
     map(
         tuple((tag(b"x="), nom_i32, tag(b", y="), nom_i32)),
-        |(_, x, _, y)| XY::new(x, y),
+        |(_, x, _, y)| Xy::new(x, y),
     )(input)
 }
 

@@ -1,6 +1,6 @@
 use crate::data::Data;
 use crate::nom_parser::*;
-use crate::xy::XY;
+use crate::xy::Xy;
 use crate::DayOutput;
 use itertools::Itertools;
 use ndarray::{s, Array2, ArrayView2, Axis, Ix2, SliceArg, Zip};
@@ -27,7 +27,7 @@ type Shape = Array2<Tile>;
 
 #[derive(Debug, Copy, Clone)]
 struct FallingShape<'a> {
-    bottom_left: XY<i64>,
+    bottom_left: Xy<i64>,
     shape: &'a Shape,
 }
 
@@ -137,7 +137,7 @@ fn detect_cycle(shapes: &[Shape], air_jets: &[i64]) -> CycleParams {
         }
 
         let mut shape = FallingShape {
-            bottom_left: XY::new(START_X, chamber.highest_rock - START_Y_PADDING),
+            bottom_left: Xy::new(START_X, chamber.highest_rock - START_Y_PADDING),
             shape: &shapes[shape_index],
         };
         shape_index = (shape_index + 1) % shapes.len();
