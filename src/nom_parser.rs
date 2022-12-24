@@ -4,7 +4,7 @@ use nom::{Finish, IResult, Parser};
 // Re-export useful parsers
 pub use nom::branch::*;
 pub use nom::bytes::complete::*;
-pub use nom::character::complete::{i32 as nom_i32, line_ending, one_of};
+pub use nom::character::complete::{i32 as nom_i32, i64 as nom_i64, line_ending, one_of};
 pub use nom::character::*;
 pub use nom::combinator::*;
 pub use nom::multi::*;
