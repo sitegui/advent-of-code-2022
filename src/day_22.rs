@@ -1,9 +1,8 @@
 use crate::data::Data;
 use crate::nom_parser::*;
-use crate::parser::Parser;
 use crate::DayOutput;
 use itertools::Itertools;
-use ndarray::{Array2, Axis};
+use ndarray::Array2;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Write};
 
@@ -27,25 +26,25 @@ enum Movement {
 struct Square {
     id: usize,
     original: Position,
-    left: Option<usize>,
-    right: Option<usize>,
-    up: Option<usize>,
-    down: Option<usize>,
+    prev_i: Option<usize>,
+    next_i: Option<usize>,
+    prev_j: Option<usize>,
+    next_j: Option<usize>,
 }
 
 #[derive(Debug, Copy, Clone)]
 enum Heading {
-    Left,
-    Right,
-    Up,
-    Down,
+    PrevJ,
+    NextJ,
+    PrevI,
+    NextI,
 }
 
 pub fn solve(data: &Data) -> DayOutput {
     let (map, movements) = parse.consume_all(data.bytes());
     let squares = generate_squares(&map);
 
-    let mut heading = Heading::Right;
+    let mut heading = Heading::NextJ;
     let mut current_square = 0;
     for &movement in &movements {
         match movement {
@@ -59,10 +58,10 @@ pub fn solve(data: &Data) -> DayOutput {
                 for _ in 0..num {
                     let square = squares[current_square];
                     let next = match heading {
-                        Heading::Left => square.left,
-                        Heading::Right => square.right,
-                        Heading::Up => square.up,
-                        Heading::Down => square.down,
+                        Heading::PrevJ => square.prev_j,
+                        Heading::NextJ => square.next_j,
+                        Heading::PrevI => square.prev_i,
+                        Heading::NextI => square.next_i,
                     };
 
                     match next {
@@ -78,7 +77,10 @@ pub fn solve(data: &Data) -> DayOutput {
         }
     }
 
-    DayOutput::from((0, 0))
+    let original = squares[current_square].original;
+    let part_1 = 1000 * (original.0 + 1) + 4 * (original.1 + 1) + heading.to_password();
+
+    DayOutput::from((part_1 as i64, 0))
 }
 
 fn parse(input: &[u8]) -> PResult<(Array2<Tile>, Vec<Movement>)> {
@@ -119,10 +121,10 @@ fn generate_squares(map: &Array2<Tile>) -> Vec<Square> {
         .map(|(id, (original_position, _))| Square {
             id,
             original: original_position,
-            left: None,
-            right: None,
-            up: None,
-            down: None,
+            prev_i: None,
+            next_i: None,
+            prev_j: None,
+            next_j: None,
         })
         .collect_vec();
 
@@ -132,10 +134,12 @@ fn generate_squares(map: &Array2<Tile>) -> Vec<Square> {
         .collect();
 
     for square in &mut squares {
-        square.right = search_neighbor(map, square.original, 1, 0).map(|pos| id_by_position[&pos]);
-        square.left = search_neighbor(map, square.original, -1, 0).map(|pos| id_by_position[&pos]);
-        square.up = search_neighbor(map, square.original, 0, -1).map(|pos| id_by_position[&pos]);
-        square.down = search_neighbor(map, square.original, 0, 1).map(|pos| id_by_position[&pos]);
+        square.next_i = search_neighbor(map, square.original, 1, 0).map(|pos| id_by_position[&pos]);
+        square.prev_i =
+            search_neighbor(map, square.original, -1, 0).map(|pos| id_by_position[&pos]);
+        square.prev_j =
+            search_neighbor(map, square.original, 0, -1).map(|pos| id_by_position[&pos]);
+        square.next_j = search_neighbor(map, square.original, 0, 1).map(|pos| id_by_position[&pos]);
     }
 
     squares
@@ -144,13 +148,13 @@ fn generate_squares(map: &Array2<Tile>) -> Vec<Square> {
 fn search_neighbor(
     map: &Array2<Tile>,
     base: Position,
-    delta_x: isize,
-    delta_y: isize,
+    delta_i: isize,
+    delta_j: isize,
 ) -> Option<Position> {
     let mut pos = base;
     loop {
-        pos.0 = wrapping_add(pos.0, delta_x, map.shape()[0]);
-        pos.1 = wrapping_add(pos.1, delta_y, map.shape()[1]);
+        pos.0 = wrapping_add(pos.0, delta_i, map.shape()[0]);
+        pos.1 = wrapping_add(pos.1, delta_j, map.shape()[1]);
 
         match map[pos] {
             Tile::Empty => {}
@@ -162,6 +166,35 @@ fn search_neighbor(
 
 fn wrapping_add(a: usize, b: isize, len: usize) -> usize {
     (a as isize + b).rem_euclid(len as isize) as usize
+}
+
+impl Heading {
+    fn turned_left(self) -> Self {
+        match self {
+            Heading::PrevJ => Heading::NextI,
+            Heading::NextJ => Heading::PrevI,
+            Heading::PrevI => Heading::PrevJ,
+            Heading::NextI => Heading::NextJ,
+        }
+    }
+
+    fn turned_right(self) -> Self {
+        match self {
+            Heading::PrevJ => Heading::PrevI,
+            Heading::NextJ => Heading::NextI,
+            Heading::PrevI => Heading::NextJ,
+            Heading::NextI => Heading::PrevJ,
+        }
+    }
+
+    fn to_password(self) -> usize {
+        match self {
+            Heading::PrevJ => 2,
+            Heading::NextJ => 0,
+            Heading::PrevI => 3,
+            Heading::NextI => 1,
+        }
+    }
 }
 
 impl Display for Tile {
