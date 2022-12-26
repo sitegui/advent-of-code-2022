@@ -1,3 +1,5 @@
+extern crate core;
+
 mod data;
 mod iter_utils;
 mod nom_parser;

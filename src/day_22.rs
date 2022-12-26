@@ -26,10 +26,16 @@ enum Movement {
 struct Square {
     id: usize,
     original: Position,
-    prev_i: Option<usize>,
-    next_i: Option<usize>,
-    prev_j: Option<usize>,
-    next_j: Option<usize>,
+    prev_i: Option<Neighbor>,
+    next_i: Option<Neighbor>,
+    prev_j: Option<Neighbor>,
+    next_j: Option<Neighbor>,
+}
+
+#[derive(Debug, Copy, Clone)]
+struct Neighbor {
+    id: usize,
+    right_turns: u8,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -44,9 +50,23 @@ pub fn solve(data: &Data) -> DayOutput {
     let (map, movements) = parse.consume_all(data.bytes());
     let squares = generate_squares(&map);
 
+    let part_1 = navigate(&squares, &movements);
+
+    let cube_side = if data.is_example() { 4 } else { 50 };
+    let mut faces = detect_faces(&map, cube_side);
+    link_faces_directly(&mut faces, cube_side);
+    fold_cube(&mut faces);
+
+    eprintln!("faces = {:#?}", faces);
+
+    DayOutput::from((part_1 as i64, 0))
+}
+
+/// Apply the navigation movements and return the "password"
+fn navigate(squares: &[Square], movements: &[Movement]) -> usize {
     let mut heading = Heading::NextJ;
     let mut current_square = 0;
-    for &movement in &movements {
+    for &movement in movements {
         match movement {
             Movement::TurnRight => {
                 heading = heading.turned_right();
@@ -69,7 +89,10 @@ pub fn solve(data: &Data) -> DayOutput {
                             break;
                         }
                         Some(next) => {
-                            current_square = next;
+                            current_square = next.id;
+                            for _ in 0..next.right_turns {
+                                heading = heading.turned_right();
+                            }
                         }
                     }
                 }
@@ -78,9 +101,8 @@ pub fn solve(data: &Data) -> DayOutput {
     }
 
     let original = squares[current_square].original;
-    let part_1 = 1000 * (original.0 + 1) + 4 * (original.1 + 1) + heading.to_password();
 
-    DayOutput::from((part_1 as i64, 0))
+    1000 * (original.0 + 1) + 4 * (original.1 + 1) + heading.to_password()
 }
 
 fn parse(input: &[u8]) -> PResult<(Array2<Tile>, Vec<Movement>)> {
@@ -133,13 +155,16 @@ fn generate_squares(map: &Array2<Tile>) -> Vec<Square> {
         .map(|square| (square.original, square.id))
         .collect();
 
+    let position_to_neighbor = |pos| Neighbor {
+        id: id_by_position[&pos],
+        right_turns: 0,
+    };
+
     for square in &mut squares {
-        square.next_i = search_neighbor(map, square.original, 1, 0).map(|pos| id_by_position[&pos]);
-        square.prev_i =
-            search_neighbor(map, square.original, -1, 0).map(|pos| id_by_position[&pos]);
-        square.prev_j =
-            search_neighbor(map, square.original, 0, -1).map(|pos| id_by_position[&pos]);
-        square.next_j = search_neighbor(map, square.original, 0, 1).map(|pos| id_by_position[&pos]);
+        square.next_i = search_neighbor(map, square.original, 1, 0).map(position_to_neighbor);
+        square.prev_i = search_neighbor(map, square.original, -1, 0).map(position_to_neighbor);
+        square.prev_j = search_neighbor(map, square.original, 0, -1).map(position_to_neighbor);
+        square.next_j = search_neighbor(map, square.original, 0, 1).map(position_to_neighbor);
     }
 
     squares
@@ -166,6 +191,121 @@ fn search_neighbor(
 
 fn wrapping_add(a: usize, b: isize, len: usize) -> usize {
     (a as isize + b).rem_euclid(len as isize) as usize
+}
+
+fn detect_faces(map: &Array2<Tile>, cube_side: usize) -> Vec<Square> {
+    let mut faces = Vec::with_capacity(6);
+
+    for face_i in 0..map.nrows() / cube_side {
+        for face_j in 0..map.ncols() / cube_side {
+            let pos = (face_i * cube_side, face_j * cube_side);
+            if map[pos] != Tile::Empty {
+                faces.push(Square {
+                    id: faces.len(),
+                    original: pos,
+                    prev_i: None,
+                    next_i: None,
+                    prev_j: None,
+                    next_j: None,
+                });
+            }
+        }
+    }
+
+    faces
+}
+
+fn link_faces_directly(faces: &mut [Square], cube_side: usize) {
+    fn link_i(faces: &mut [Square], prev: usize, next: usize) {
+        faces[prev].next_i = Some(Neighbor {
+            id: next,
+            right_turns: 0,
+        });
+        faces[next].prev_i = Some(Neighbor {
+            id: prev,
+            right_turns: 0,
+        });
+    }
+
+    fn link_j(faces: &mut [Square], prev: usize, next: usize) {
+        faces[prev].next_j = Some(Neighbor {
+            id: next,
+            right_turns: 0,
+        });
+        faces[next].prev_j = Some(Neighbor {
+            id: prev,
+            right_turns: 0,
+        });
+    }
+
+    for face_a in 0..faces.len() {
+        for face_b in face_a + 1..faces.len() {
+            let face_a_pos = faces[face_a].original;
+            let face_b_pos = faces[face_b].original;
+            let delta_i = (face_b_pos.0 as isize - face_a_pos.0 as isize) / cube_side as isize;
+            let delta_j = (face_b_pos.1 as isize - face_a_pos.1 as isize) / cube_side as isize;
+
+            match (delta_i, delta_j) {
+                (1, 0) => link_i(faces, face_a, face_b),
+                (-1, 0) => link_i(faces, face_b, face_a),
+                (0, 1) => link_j(faces, face_a, face_b),
+                (0, -1) => link_j(faces, face_a, face_b),
+                _ => {}
+            }
+        }
+    }
+}
+
+fn fold_cube(faces: &mut [Square]) {
+    fn print_faces(faces: &[Square]) {
+        for face in faces {
+            println!(
+                "Face {}: ni = {:?}, nj = {:?}, pi = {:?}, pj = {:?}",
+                face.id,
+                face.next_i.map(|n| n.id),
+                face.next_j.map(|n| n.id),
+                face.prev_i.map(|n| n.id),
+                face.prev_j.map(|n| n.id)
+            );
+        }
+    }
+
+    for _ in 0..5 {
+        for middle_face_id in 0..faces.len() {
+            let middle_face = faces[middle_face_id];
+
+            macro_rules! fold_neighbors {
+                ($a:ident, $b:ident) => {
+                    if let Some((neighbor_1, neighbor_2)) = middle_face.$a.zip(middle_face.$b) {
+                        println!("{} {} {}", middle_face_id, stringify!($a), stringify!($b));
+                        faces[neighbor_1.id].$b = Some(Neighbor {
+                            id: neighbor_2.id,
+                            right_turns: 3,
+                        });
+                        faces[neighbor_2.id].$a = Some(Neighbor {
+                            id: neighbor_1.id,
+                            right_turns: 1,
+                        });
+                        print_faces(faces);
+                    }
+                };
+            }
+
+            fold_neighbors!(next_i, next_j);
+            fold_neighbors!(prev_j, next_i);
+            fold_neighbors!(prev_i, prev_j);
+            fold_neighbors!(next_j, prev_i);
+        }
+
+        if faces.iter().all(|face| {
+            face.prev_i.is_some()
+                && face.prev_j.is_some()
+                && face.next_i.is_some()
+                && face.next_j.is_some()
+        }) {
+            break;
+        }
+    }
 }
 
 impl Heading {
