@@ -35,11 +35,11 @@ struct Square {
 #[derive(Debug, Copy, Clone)]
 struct Neighbor {
     id: usize,
-    right_turns: u8,
+    heading: Direction,
 }
 
-#[derive(Debug, Copy, Clone)]
-enum Heading {
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+enum Direction {
     PrevJ,
     NextJ,
     PrevI,
@@ -48,23 +48,28 @@ enum Heading {
 
 pub fn solve(data: &Data) -> DayOutput {
     let (map, movements) = parse.consume_all(data.bytes());
-    let squares = generate_squares(&map);
+    let squares_part_1 = generate_squares(&map, |base, direction| {
+        search_neighbor_part_1(&map, base, direction)
+    });
 
-    let part_1 = navigate(&squares, &movements);
+    let part_1 = navigate_and_get_password(&squares_part_1, &movements);
 
     let cube_side = if data.is_example() { 4 } else { 50 };
     let mut faces = detect_faces(&map, cube_side);
     link_faces_directly(&mut faces, cube_side);
     fold_cube(&mut faces);
 
-    eprintln!("faces = {:#?}", faces);
+    let squares_part_2 = generate_squares(&map, |base, direction| {
+        search_neighbor_part_2(&map, &faces, cube_side, base, direction)
+    });
+    let part_2 = navigate_and_get_password(&squares_part_2, &movements);
 
-    DayOutput::from((part_1 as i64, 0))
+    DayOutput::from((part_1 as i64, part_2 as i64))
 }
 
 /// Apply the navigation movements and return the "password"
-fn navigate(squares: &[Square], movements: &[Movement]) -> usize {
-    let mut heading = Heading::NextJ;
+fn navigate_and_get_password(squares: &[Square], movements: &[Movement]) -> usize {
+    let mut heading = Direction::NextJ;
     let mut current_square = 0;
     for &movement in movements {
         match movement {
@@ -78,10 +83,10 @@ fn navigate(squares: &[Square], movements: &[Movement]) -> usize {
                 for _ in 0..num {
                     let square = squares[current_square];
                     let next = match heading {
-                        Heading::PrevJ => square.prev_j,
-                        Heading::NextJ => square.next_j,
-                        Heading::PrevI => square.prev_i,
-                        Heading::NextI => square.next_i,
+                        Direction::PrevJ => square.prev_j,
+                        Direction::NextJ => square.next_j,
+                        Direction::PrevI => square.prev_i,
+                        Direction::NextI => square.next_i,
                     };
 
                     match next {
@@ -90,9 +95,7 @@ fn navigate(squares: &[Square], movements: &[Movement]) -> usize {
                         }
                         Some(next) => {
                             current_square = next.id;
-                            for _ in 0..next.right_turns {
-                                heading = heading.turned_right();
-                            }
+                            heading = next.heading;
                         }
                     }
                 }
@@ -135,7 +138,10 @@ fn parse_movement(input: &[u8]) -> PResult<Movement> {
     ))(input)
 }
 
-fn generate_squares(map: &Array2<Tile>) -> Vec<Square> {
+fn generate_squares(
+    map: &Array2<Tile>,
+    mut search_neighbor: impl FnMut(Position, Direction) -> Option<(Position, Direction)>,
+) -> Vec<Square> {
     let mut squares = map
         .indexed_iter()
         .filter(|&(_, &tile)| tile == Tile::Open)
@@ -155,27 +161,31 @@ fn generate_squares(map: &Array2<Tile>) -> Vec<Square> {
         .map(|square| (square.original, square.id))
         .collect();
 
-    let position_to_neighbor = |pos| Neighbor {
-        id: id_by_position[&pos],
-        right_turns: 0,
-    };
-
     for square in &mut squares {
-        square.next_i = search_neighbor(map, square.original, 1, 0).map(position_to_neighbor);
-        square.prev_i = search_neighbor(map, square.original, -1, 0).map(position_to_neighbor);
-        square.prev_j = search_neighbor(map, square.original, 0, -1).map(position_to_neighbor);
-        square.next_j = search_neighbor(map, square.original, 0, 1).map(position_to_neighbor);
+        for heading in [
+            Direction::PrevJ,
+            Direction::NextJ,
+            Direction::PrevI,
+            Direction::NextI,
+        ] {
+            *square.get_mut(heading) =
+                search_neighbor(square.original, heading).map(|(pos, heading)| Neighbor {
+                    id: id_by_position[&pos],
+                    heading,
+                });
+        }
     }
 
     squares
 }
 
-fn search_neighbor(
+fn search_neighbor_part_1(
     map: &Array2<Tile>,
     base: Position,
-    delta_i: isize,
-    delta_j: isize,
-) -> Option<Position> {
+    direction: Direction,
+) -> Option<(Position, Direction)> {
+    let (delta_i, delta_j) = direction.deltas();
+
     let mut pos = base;
     loop {
         pos.0 = wrapping_add(pos.0, delta_i, map.shape()[0]);
@@ -183,9 +193,69 @@ fn search_neighbor(
 
         match map[pos] {
             Tile::Empty => {}
-            Tile::Open => return Some(pos),
+            Tile::Open => return Some((pos, direction)),
             Tile::Wall => return None,
         }
+    }
+}
+
+fn search_neighbor_part_2(
+    map: &Array2<Tile>,
+    faces: &[Square],
+    cube_side: usize,
+    base: Position,
+    direction: Direction,
+) -> Option<(Position, Direction)> {
+    let (delta_i, delta_j) = direction.deltas();
+    let next_pos = (base.0 as isize + delta_i, base.1 as isize + delta_j);
+    let simple_walk = if next_pos.0 >= 0 && next_pos.1 >= 0 {
+        map.get((next_pos.0 as usize, next_pos.1 as usize))
+            .copied()
+            .unwrap_or(Tile::Empty)
+    } else {
+        Tile::Empty
+    };
+
+    match simple_walk {
+        Tile::Open => return Some(((next_pos.0 as usize, next_pos.1 as usize), direction)),
+        Tile::Wall => return None,
+        Tile::Empty => {}
+    }
+
+    let face_pin = (
+        base.0 / cube_side * cube_side,
+        base.1 / cube_side * cube_side,
+    );
+    let face = faces.iter().find(|face| face.original == face_pin).unwrap();
+    let neighbor = face.get(direction).unwrap();
+    let neighbor_pin = faces[neighbor.id].original;
+
+    let corner_distance = match direction {
+        Direction::PrevJ => face_pin.0 + (cube_side - 1) - base.0,
+        Direction::NextJ => base.0 - face_pin.0,
+        Direction::PrevI => base.1 - face_pin.1,
+        Direction::NextI => face_pin.1 + (cube_side - 1) - base.1,
+    };
+    let next_pos = match neighbor.heading {
+        Direction::PrevJ => (
+            neighbor_pin.0 + (cube_side - 1) - corner_distance,
+            neighbor_pin.1 + (cube_side - 1),
+        ),
+        Direction::NextJ => (neighbor_pin.0 + corner_distance, neighbor_pin.1),
+        Direction::PrevI => (
+            neighbor_pin.0 + (cube_side - 1),
+            neighbor_pin.1 + corner_distance,
+        ),
+        Direction::NextI => (
+            neighbor_pin.0,
+            neighbor_pin.1 + (cube_side - 1) - corner_distance,
+        ),
+    };
+
+    match map[next_pos] {
+        Tile::Open => Some((next_pos, neighbor.heading)),
+        Tile::Wall => None,
+        _ => unreachable!(),
     }
 }
 
@@ -219,22 +289,22 @@ fn link_faces_directly(faces: &mut [Square], cube_side: usize) {
     fn link_i(faces: &mut [Square], prev: usize, next: usize) {
         faces[prev].next_i = Some(Neighbor {
             id: next,
-            right_turns: 0,
+            heading: Direction::NextI,
         });
         faces[next].prev_i = Some(Neighbor {
             id: prev,
-            right_turns: 0,
+            heading: Direction::PrevI,
         });
     }
 
     fn link_j(faces: &mut [Square], prev: usize, next: usize) {
         faces[prev].next_j = Some(Neighbor {
             id: next,
-            right_turns: 0,
+            heading: Direction::NextJ,
         });
         faces[next].prev_j = Some(Neighbor {
             id: prev,
-            right_turns: 0,
+            heading: Direction::PrevJ,
         });
     }
 
@@ -257,44 +327,38 @@ fn link_faces_directly(faces: &mut [Square], cube_side: usize) {
 }
 
 fn fold_cube(faces: &mut [Square]) {
-    fn print_faces(faces: &[Square]) {
-        for face in faces {
-            println!(
-                "Face {}: ni = {:?}, nj = {:?}, pi = {:?}, pj = {:?}",
-                face.id,
-                face.next_i.map(|n| n.id),
-                face.next_j.map(|n| n.id),
-                face.prev_i.map(|n| n.id),
-                face.prev_j.map(|n| n.id)
-            );
-        }
-    }
-
     for _ in 0..5 {
         for middle_face_id in 0..faces.len() {
             let middle_face = faces[middle_face_id];
 
-            macro_rules! fold_neighbors {
-                ($a:ident, $b:ident) => {
-                    if let Some((neighbor_1, neighbor_2)) = middle_face.$a.zip(middle_face.$b) {
-                        println!("{} {} {}", middle_face_id, stringify!($a), stringify!($b));
-                        faces[neighbor_1.id].$b = Some(Neighbor {
-                            id: neighbor_2.id,
-                            right_turns: 3,
-                        });
-                        faces[neighbor_2.id].$a = Some(Neighbor {
-                            id: neighbor_1.id,
-                            right_turns: 1,
-                        });
-                        print_faces(faces);
-                    }
-                };
-            }
+            for (border_1, border_2) in [
+                (Direction::NextI, Direction::NextJ),
+                (Direction::PrevJ, Direction::NextI),
+                (Direction::PrevI, Direction::PrevJ),
+                (Direction::NextJ, Direction::PrevI),
+            ] {
+                let neighbor_1 = middle_face.get(border_1);
+                let neighbor_2 = middle_face.get(border_2);
+                if let Some((neighbor_1, neighbor_2)) = neighbor_1.zip(neighbor_2) {
+                    let border_1 = faces[neighbor_1.id]
+                        .find_border(middle_face_id)
+                        .unwrap()
+                        .turned_right();
+                    let border_2 = faces[neighbor_2.id]
+                        .find_border(middle_face_id)
+                        .unwrap()
+                        .turned_left();
 
-            fold_neighbors!(next_i, next_j);
-            fold_neighbors!(prev_j, next_i);
-            fold_neighbors!(prev_i, prev_j);
-            fold_neighbors!(next_j, prev_i);
+                    *faces[neighbor_1.id].get_mut(border_1) = Some(Neighbor {
+                        id: neighbor_2.id,
+                        heading: border_2.flipped(),
+                    });
+                    *faces[neighbor_2.id].get_mut(border_2) = Some(Neighbor {
+                        id: neighbor_1.id,
+                        heading: border_1.flipped(),
+                    });
+                }
+            }
         }
 
         if faces.iter().all(|face| {
@@ -308,31 +372,79 @@ fn fold_cube(faces: &mut [Square]) {
     }
 }
 
-impl Heading {
+impl Square {
+    fn get(&self, border: Direction) -> Option<Neighbor> {
+        match border {
+            Direction::PrevJ => self.prev_j,
+            Direction::NextJ => self.next_j,
+            Direction::PrevI => self.prev_i,
+            Direction::NextI => self.next_i,
+        }
+    }
+
+    fn get_mut(&mut self, border: Direction) -> &mut Option<Neighbor> {
+        match border {
+            Direction::PrevJ => &mut self.prev_j,
+            Direction::NextJ => &mut self.next_j,
+            Direction::PrevI => &mut self.prev_i,
+            Direction::NextI => &mut self.next_i,
+        }
+    }
+
+    fn find_border(&self, neighbor: usize) -> Option<Direction> {
+        match (self.prev_j, self.next_j, self.prev_i, self.next_i) {
+            (Some(Neighbor { id, .. }), _, _, _) if id == neighbor => Some(Direction::PrevJ),
+            (_, Some(Neighbor { id, .. }), _, _) if id == neighbor => Some(Direction::NextJ),
+            (_, _, Some(Neighbor { id, .. }), _) if id == neighbor => Some(Direction::PrevI),
+            (_, _, _, Some(Neighbor { id, .. })) if id == neighbor => Some(Direction::NextI),
+            _ => None,
+        }
+    }
+}
+
+impl Direction {
     fn turned_left(self) -> Self {
         match self {
-            Heading::PrevJ => Heading::NextI,
-            Heading::NextJ => Heading::PrevI,
-            Heading::PrevI => Heading::PrevJ,
-            Heading::NextI => Heading::NextJ,
+            Direction::PrevJ => Direction::NextI,
+            Direction::NextJ => Direction::PrevI,
+            Direction::PrevI => Direction::PrevJ,
+            Direction::NextI => Direction::NextJ,
         }
     }
 
     fn turned_right(self) -> Self {
         match self {
-            Heading::PrevJ => Heading::PrevI,
-            Heading::NextJ => Heading::NextI,
-            Heading::PrevI => Heading::NextJ,
-            Heading::NextI => Heading::PrevJ,
+            Direction::PrevJ => Direction::PrevI,
+            Direction::NextJ => Direction::NextI,
+            Direction::PrevI => Direction::NextJ,
+            Direction::NextI => Direction::PrevJ,
+        }
+    }
+
+    fn flipped(self) -> Self {
+        match self {
+            Direction::PrevJ => Direction::NextJ,
+            Direction::NextJ => Direction::PrevJ,
+            Direction::PrevI => Direction::NextI,
+            Direction::NextI => Direction::PrevI,
         }
     }
 
     fn to_password(self) -> usize {
         match self {
-            Heading::PrevJ => 2,
-            Heading::NextJ => 0,
-            Heading::PrevI => 3,
-            Heading::NextI => 1,
+            Direction::PrevJ => 2,
+            Direction::NextJ => 0,
+            Direction::PrevI => 3,
+            Direction::NextI => 1,
+        }
+    }
+
+    fn deltas(self) -> (isize, isize) {
+        match self {
+            Direction::PrevJ => (0, -1),
+            Direction::NextJ => (0, 1),
+            Direction::PrevI => (-1, 0),
+            Direction::NextI => (1, 0),
         }
     }
 }
@@ -344,5 +456,19 @@ impl Display for Tile {
             Tile::Open => '.',
             Tile::Wall => '#',
         })
+    }
+}
+
+impl Display for Square {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Square {}: ni = {:?}, nj = {:?}, pi = {:?}, pj = {:?}",
+            self.id,
+            self.next_i.map(|n| n.id),
+            self.next_j.map(|n| n.id),
+            self.prev_i.map(|n| n.id),
+            self.prev_j.map(|n| n.id)
+        )
     }
 }
