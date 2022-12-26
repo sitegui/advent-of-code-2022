@@ -15,11 +15,13 @@ pub struct Xyz<T = i32> {
     pub z: T,
 }
 
-impl<T: Num + Signed + Copy> Xy<T> {
-    pub fn new(x: T, y: T) -> Self {
+impl<T> Xy<T> {
+    pub const fn new(x: T, y: T) -> Self {
         Xy { x, y }
     }
+}
 
+impl<T: Num + Signed + Copy> Xy<T> {
     pub fn manhattan_distance(self, other: Self) -> T {
         let dx = (self.x - other.x).abs();
         let dy = (self.y - other.y).abs();
@@ -30,6 +32,26 @@ impl<T: Num + Signed + Copy> Xy<T> {
 impl<T> Xyz<T> {
     pub fn new(x: T, y: T, z: T) -> Self {
         Xyz { x, y, z }
+    }
+}
+
+impl<T: Zero> Zero for Xy<T> {
+    fn zero() -> Self {
+        Self::new(T::zero(), T::zero())
+    }
+
+    fn is_zero(&self) -> bool {
+        self.x.is_zero() && self.y.is_zero()
+    }
+}
+
+impl<T: One + Zero> Xy<T> {
+    pub fn x_axis() -> Self {
+        Xy::new(T::one(), T::zero())
+    }
+
+    pub fn y_axis() -> Self {
+        Xy::new(T::zero(), T::one())
     }
 }
 
