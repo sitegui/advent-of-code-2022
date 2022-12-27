@@ -1,14 +1,15 @@
 #![allow(dead_code)]
 
+use derive_more::{Add, AddAssign, Sub};
 use num_traits::{Num, One, Signed, Zero};
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, derive_more::Add)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Add, AddAssign, Sub)]
 pub struct Xy<T = i32> {
     pub x: T,
     pub y: T,
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, derive_more::Add)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Add, AddAssign)]
 pub struct Xyz<T = i32> {
     pub x: T,
     pub y: T,
@@ -30,8 +31,12 @@ impl<T: Num + Signed + Copy> Xy<T> {
 }
 
 impl<T> Xyz<T> {
-    pub fn new(x: T, y: T, z: T) -> Self {
+    pub const fn new(x: T, y: T, z: T) -> Self {
         Xyz { x, y, z }
+    }
+
+    pub fn xy(self) -> Xy<T> {
+        Xy::new(self.x, self.y)
     }
 }
 
